@@ -1,28 +1,13 @@
 import os
 import openai
 import json
-from typing import Optional
-from pydantic import BaseModel
 from dotenv import load_dotenv
+
+from src.model.NutritionInfoModel import NutritionInfo
 
 # Load environment variables from .env
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# Define Pydantic models
-class MacroValues(BaseModel):
-    calories_kcal: Optional[float]
-    protein_g: Optional[float]
-    fat_g: Optional[float]
-    carbs_g: Optional[float]
-
-class NutritionInfo(BaseModel):
-    product_name: str
-    source: str
-    serving_size_g: Optional[float]
-    per_100g: MacroValues
-    per_serving: MacroValues
-    estimated: bool
 
 def get_nutrition_info(product_name: str) -> NutritionInfo:
     """

@@ -3,7 +3,6 @@ from typing import Optional
 from pydantic import BaseModel
 from src.model.MacroValuesModel import MacroValues
 
-@dataclass
 class NutritionInfo(BaseModel):
     product_name: str
     source: str

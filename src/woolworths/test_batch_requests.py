@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 
 # Import the function from your main module
-from test import get_nutrition_info  # adjust if your file name is different
+from .test import get_nutrition_info  # adjust if your file name is different
 
 # List of products to test
 products = [
@@ -29,7 +29,8 @@ async def main():
     # Print results
     for product_name, data in zip(products, results):
         print(f"=== {product_name} ===")
-        print(json.dumps(data, indent=2))
+        # Convert Pydantic object to dict before dumping to JSON
+        print(json.dumps(data.dict(), indent=2))
 
 if __name__ == "__main__":
     asyncio.run(main())

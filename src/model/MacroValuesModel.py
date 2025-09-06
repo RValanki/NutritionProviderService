@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Optional
 from pydantic import BaseModel
 
-@dataclass
 class MacroValues(BaseModel):
     calories_kcal: Optional[float]
     protein_g: Optional[float]
