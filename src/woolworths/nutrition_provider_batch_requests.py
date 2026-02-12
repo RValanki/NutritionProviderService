@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 
 # Import the function from your main module
-from .test import get_nutrition_info  # adjust if your file name is different
+from .nutrition_provider import get_nutrition_info  # adjust if your file name is different
 
 # List of products to test
 products = [

@@ -3,7 +3,7 @@ from typing import List
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
-from src.woolworths.test import get_nutrition_info, NutritionInfo
+from src.woolworths.nutrition_provider import get_nutrition_info, NutritionInfo
 
 app = FastAPI(title="Nutrition Provider API")
 
