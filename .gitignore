@@ -1,8 +1,53 @@
-*.env.env
+# =========================
+# Node / TypeScript build
+# =========================
+node_modules/
+dist/
+cdk.out/
+
+# CDK context / build info
+*.tsbuildinfo
+
+# =========================
+# Python build artifacts
+# =========================
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/package/
+**/*.dist-info/
+*.egg-info/
+*.pyd
+*.env
+
+# =========================
+# Lambda / service local files
+# =========================
+receipt_lambda/__pycache__/
+receipt_lambda/service/__pycache__/
+*.b64
+*.b64.txt
+
+# =========================
+# Tests / temp files
+# =========================
+test_local.py
+*.log
+
+# =========================
+# OS / editor files
+# =========================
+.DS_Store
+*.swp
+
+# IDE / editor
 .idea/
-__pycache__/
-*.pyc
-.env
-.idea/
-__pycache__/
-*.pyc
+*.iml
+
+# Lambda / package build
+food-analysis-lambda/.version
+food-analysis-lambda/package/
+**/*.dist-info/
+
+# CDK / Terraform outputs
+infrastructure/cdk.out/
