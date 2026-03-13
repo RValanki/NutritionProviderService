@@ -29,7 +29,7 @@ class ClaudeVisionService:
     
     def __init__(self):
         """Initialize the Claude client"""
-        self.client = Anthropic(api_key="")
+        self.client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.vision_model = "claude-sonnet-4-20250514"  # For image analysis
         self.text_model = "claude-haiku-4-5-20251001"    # For text-only analysis
     

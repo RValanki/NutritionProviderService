@@ -1,1 +1,6 @@
-openai>=1.0.0
+anthropic==0.36.0
+pydantic==1.10.12
+boto3==1.35.36
+httpx==0.26.0
+google-cloud-firestore
+google-auth

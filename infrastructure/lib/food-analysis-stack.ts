@@ -38,6 +38,7 @@ export class FoodAnalysisStack extends cdk.Stack {
 
       environment: {
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT || '',
       },
 
       timeout: cdk.Duration.seconds(30),
