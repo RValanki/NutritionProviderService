@@ -1,6 +1,6 @@
 """
 Claude Vision Service for analyzing food from images or text descriptions.
-Uses Claude Sonnet 4.5 for vision analysis and Claude Haiku 4.5 for text-only.
+Uses Claude Sonnet 5 for vision analysis and Claude Haiku 4.5 for text-only.
 Optimized for cost with minimal output tokens.
 """
 import os
@@ -30,7 +30,7 @@ class ClaudeVisionService:
     def __init__(self):
         """Initialize the Claude client"""
         self.client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        self.vision_model = "claude-sonnet-4-20250514"  # For image analysis
+        self.vision_model = "claude-sonnet-5"  # For image analysis
         self.text_model = "claude-haiku-4-5-20251001"    # For text-only analysis
     
     def analyze_food(
@@ -65,8 +65,11 @@ class ClaudeVisionService:
         system_prompt = self._build_system_prompt()
         user_message = self._build_user_message(text_description, image_base64)
         
-        # Call Claude API with prompt caching
-        response = self.client.messages.create(
+        # Call Claude API with prompt caching.
+        # Sonnet 5 runs adaptive thinking by default when `thinking` is omitted,
+        # which would eat into the small max_tokens budget here - keep it off
+        # to preserve the fast/cheap structured-extraction behavior.
+        create_kwargs = dict(
             model=model,
             max_tokens=max_tokens,
             system=[
@@ -78,6 +81,10 @@ class ClaudeVisionService:
             ],
             messages=[user_message]
         )
+        if image_base64:
+            create_kwargs["thinking"] = {"type": "disabled"}
+
+        response = self.client.messages.create(**create_kwargs)
         
         # Extract response text
         response_text = response.content[0].text
