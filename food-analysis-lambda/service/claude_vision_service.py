@@ -118,7 +118,14 @@ class ClaudeVisionService:
   ]
 }
 
-Rules: Smart units (pieces for countable, grams for bulk). PerUnit = per 1g or per 1 piece. Major components only (3-5 max). Round to 1 decimal. Component names should be simple food names without parentheses or brackets."""
+Rules: Smart units (pieces for countable, grams for bulk). PerUnit = per 1g or per 1 piece. Round to 1 decimal. Component names should be simple food names without parentheses or brackets.
+
+Breakdown policy (decide itemType first, it controls how many components you return):
+- "branded_product": a packaged/manufactured item consumed as sold (e.g. a KitKat, a bag of chips, a can of soda, a protein bar). Do NOT split it into its ingredients (no "chocolate", "wafer", "cream", etc). Return exactly ONE component representing the whole product.
+- "meal": a dish with visually/structurally separate parts you can actually see or identify (e.g. a burrito, a burger, a wrap, a plate with rice + protein + veg). Break this into its major components only (3-5 max).
+- "meal_component": a single food item that isn't a packaged product and isn't a multi-part meal (e.g. a banana, a plain grilled chicken breast). Return exactly ONE component.
+
+When in doubt whether something is one packaged item vs. a meal, prefer fewer components."""
     
     def _build_user_message(
         self,
