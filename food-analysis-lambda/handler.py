@@ -13,6 +13,20 @@ from service.firestore_service import write_logged_meal_event
 vision_service = ClaudeVisionService()
 
 
+def _authenticated_uid(event: Dict[str, Any]) -> str | None:
+    """The verified Firebase uid the gateway authorizer injected into the request
+    context. This is the source of truth for identity — not the request body — so
+    a client can't act as another user by supplying a different userId. Returns
+    None when it's absent (the authorizer should always populate it for this route)."""
+    ctx = (event or {}).get("requestContext", {}) or {}
+    authorizer = ctx.get("authorizer", {}) or {}
+    uid = authorizer.get("uid")
+    if uid:
+        return uid
+    claims = authorizer.get("claims", {}) or {}
+    return claims.get("uid") or claims.get("sub")
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     AWS Lambda handler for food analysis.
@@ -44,16 +58,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     "body": json.dumps({"error": "Invalid JSON in request body"})
                 }
 
-        # 2️⃣ Extract inputs
-        user_id = body.get("userId")
+        # 2️⃣ Extract inputs. Identity comes from the verified token (authorizer
+        # context) first; the body userId is a deprecated fallback kept only while
+        # older clients still send it.
+        user_id = _authenticated_uid(event) or body.get("userId")
         text_description = body.get("textDescription")
         image_base64 = body.get("imageBase64")
 
         # 3️⃣ Validate inputs
         if not user_id:
             return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "userId is required"})
+                "statusCode": 401,
+                "body": json.dumps({"error": "Unauthorized"})
             }
 
         if not text_description and not image_base64:

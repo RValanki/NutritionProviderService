@@ -13,6 +13,18 @@ from service.firestore_service import write_logged_meal_event
 amend_service = ClaudeAmendService()
 
 
+def _authenticated_uid(event: Dict[str, Any]) -> str | None:
+    """The verified Firebase uid the gateway authorizer injected into the request
+    context — the source of truth for identity, not the request body."""
+    ctx = (event or {}).get("requestContext", {}) or {}
+    authorizer = ctx.get("authorizer", {}) or {}
+    uid = authorizer.get("uid")
+    if uid:
+        return uid
+    claims = authorizer.get("claims", {}) or {}
+    return claims.get("uid") or claims.get("sub")
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Expected input:
@@ -33,12 +45,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             except json.JSONDecodeError:
                 return _error(400, "Invalid JSON in request body")
 
-        user_id = body.get("userId")
+        # Identity from the verified token (authorizer context) first; body userId
+        # is a deprecated fallback for older clients.
+        user_id = _authenticated_uid(event) or body.get("userId")
         existing_meal = body.get("existingMeal")
         amendment_text = body.get("amendmentText", "").strip()
 
         if not user_id:
-            return _error(400, "userId is required")
+            return _error(401, "Unauthorized")
         if not existing_meal:
             return _error(400, "existingMeal is required")
         if not amendment_text:
