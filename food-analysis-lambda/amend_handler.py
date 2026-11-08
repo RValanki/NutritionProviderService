@@ -50,6 +50,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         user_id = _authenticated_uid(event) or body.get("userId")
         existing_meal = body.get("existingMeal")
         amendment_text = body.get("amendmentText", "").strip()
+        request_id = body.get("requestId")
 
         if not user_id:
             return _error(401, "Unauthorized")
@@ -67,7 +68,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Write Firestore event — Swift client picks this up via the existing
         # loggedMeal listener, same as the /analyze-food flow
-        write_logged_meal_event(user_id=user_id, meal_data=api_response)
+        write_logged_meal_event(user_id=user_id, meal_data=api_response, request_id=request_id)
 
         return {
             "statusCode": 200,

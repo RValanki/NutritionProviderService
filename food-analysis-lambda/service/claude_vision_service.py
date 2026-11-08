@@ -14,6 +14,7 @@ from .models import (
     FoodComponent,
     NutritionData,
     ItemType,
+    NutritionSource,
     create_nutrition_data_from_dict,
 )
 from .utils import (
@@ -58,8 +59,10 @@ class ClaudeVisionService:
         # Select model based on input type
         model = self.vision_model if image_base64 else self.text_model
         
-        # Optimized token limits
-        max_tokens = 600 if image_base64 else 800
+        # Token limits sized to fit the 15-component ceiling without truncating.
+        # 600 was too small for dense plates (many components) and cut the JSON off
+        # mid-object, which then failed to parse. ~15 components + wrapper fits in 2000.
+        max_tokens = 2000 if image_base64 else 800
         
         # Build the prompt
         system_prompt = self._build_system_prompt()
@@ -125,7 +128,9 @@ Breakdown policy (decide itemType first, it controls how many components you ret
 - "meal": a dish with visually/structurally separate parts you can actually see or identify (e.g. a burrito, a burger, a wrap, a plate with rice + protein + veg). Break this into its major components only (3-5 max).
 - "meal_component": a single food item that isn't a packaged product and isn't a multi-part meal (e.g. a banana, a plain grilled chicken breast). Return exactly ONE component.
 
-When in doubt whether something is one packaged item vs. a meal, prefer fewer components."""
+When in doubt whether something is one packaged item vs. a meal, prefer fewer components.
+
+Hard limit: NEVER return more than 15 components under any circumstances. For a large spread (e.g. a shared BBQ or buffet), group similar items into a single component (e.g. "Assorted grilled meats") rather than listing each one."""
     
     def _build_user_message(
         self,
@@ -152,12 +157,34 @@ When in doubt whether something is one packaged item vs. a meal, prefer fewer co
                 }
             })
         
-        # Add text prompt - simplified
-        if text_description:
+        # Build the text prompt. When BOTH a photo and the user's text are given,
+        # combine them intelligently: read the image first, then cross-reference the
+        # text — trusting the text only when it's accurate and consistent with the
+        # photo, and falling back to the image when the text is wrong or nonsense.
+        if image_base64 and text_description:
+            prompt = (
+                "You are given BOTH a photo and the user's own text describing the "
+                "SAME meal.\n"
+                f'User\'s text: "{text_description}"\n\n'
+                "Do this:\n"
+                "1. First identify the food from the IMAGE on its own.\n"
+                "2. Then cross-reference it against the user's text.\n"
+                "3. Return ONE combined analysis drawing on both:\n"
+                "   - Prefer the user's text for details the photo can't convey "
+                "(brand, cooking method, hidden/added ingredients, and the exact "
+                "quantities or portion sizes they state) — but ONLY when it is "
+                "plausible and consistent with what is actually in the image.\n"
+                "   - If the text contradicts the image, is vague, or looks like "
+                "nonsense or unrelated to the photo, DISREGARD the text and base the "
+                "result on the image alone.\n"
+                "The image is the ground truth for what the food is; the text refines "
+                "it only when it genuinely matches."
+            )
+        elif text_description:
             prompt = f"Analyze: {text_description}"
         else:
             prompt = "Analyze this food."
-        
+
         content.append({
             "type": "text",
             "text": prompt
@@ -211,7 +238,9 @@ When in doubt whether something is one packaged item vs. a meal, prefer fewer co
         total_carbs = 0
         total_fat = 0
         
-        for comp_data in response_json.get('components', []):
+        # Safety clamp: never build more than 15 components even if the model
+        # ignores the prompt ceiling. Mirrors the hard limit in the system prompt.
+        for comp_data in response_json.get('components', [])[:15]:
             quantity = float(comp_data['quantity'])
             
             # Clean component name
@@ -303,7 +332,11 @@ When in doubt whether something is one packaged item vs. a meal, prefer fewer co
                         "protein": comp.claude_estimate.protein,
                         "carbs": comp.claude_estimate.carbs,
                         "fat": comp.claude_estimate.fat,
-                    }
+                    },
+                    # Where this component's values came from. Everything this
+                    # service produces is an AI estimate today; future DB-backed
+                    # lookups would set open_food_facts / usda / ddb_cache here.
+                    "source": NutritionSource.AI_ESTIMATE.value,
                 }
                 for comp in result.components
             ],

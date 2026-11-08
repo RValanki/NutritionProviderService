@@ -64,6 +64,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         user_id = _authenticated_uid(event) or body.get("userId")
         text_description = body.get("textDescription")
         image_base64 = body.get("imageBase64")
+        request_id = body.get("requestId")
 
         # 3️⃣ Validate inputs
         if not user_id:
@@ -90,7 +91,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         api_response = vision_service.get_api_response(result)
 
         # 6️⃣ Write loggedMeal event to Firestore
-        write_logged_meal_event(user_id=user_id, meal_data=api_response)
+        write_logged_meal_event(user_id=user_id, meal_data=api_response, request_id=request_id)
 
         # 7️⃣ Return success response
         return {

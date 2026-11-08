@@ -34,7 +34,7 @@ def _get_db():
     return _db
 
 
-def write_logged_meal_event(user_id: str, meal_data: dict) -> str:
+def write_logged_meal_event(user_id: str, meal_data: dict, request_id: str | None = None) -> str:
     """
     Write a loggedMeal event to Firestore under users/{userId}/events.
 
@@ -57,6 +57,9 @@ def write_logged_meal_event(user_id: str, meal_data: dict) -> str:
         "timestamp": datetime.now(timezone.utc),
         "readBy": [],
         "mealData": meal_data,
+        # Echo the client's requestId so the app can match this result to the exact
+        # pending logged-meal (and its loading card). None for older clients.
+        "requestId": request_id,
     }
 
     db.collection("users") \

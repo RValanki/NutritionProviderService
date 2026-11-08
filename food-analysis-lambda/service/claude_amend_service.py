@@ -11,6 +11,7 @@ from .models import (
     FoodComponent,
     NutritionData,
     ItemType,
+    NutritionSource,
 )
 from .utils import extract_json_from_response
 
@@ -42,7 +43,10 @@ class ClaudeAmendService:
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=800,
+            # Sized to fit the 15-component ceiling without truncating. Amend returns
+            # ALL components (existing + new), so a growing meal can exceed the old
+            # 800-token budget and cut the JSON off mid-object, failing to parse.
+            max_tokens=2000,
             system=[
                 {
                     "type": "text",
@@ -88,7 +92,8 @@ Rules:
 - PerUnit = per 1g or per 1 piece
 - Round to 1 decimal
 - Component names should be simple food names without parentheses or brackets
-- Return ALL components (existing + amended), not just the changed ones"""
+- Return ALL components (existing + amended), not just the changed ones
+- Hard limit: NEVER return more than 15 components. If applying the amendment would exceed 15, group similar items into a single component (e.g. "Assorted grilled meats") to stay within the limit"""
 
     def _build_user_message(self, existing_meal: dict, amendment_text: str) -> dict:
         existing_summary = json.dumps({
@@ -124,7 +129,9 @@ Rules:
         components = []
         total_calories = total_protein = total_carbs = total_fat = 0
 
-        for comp_data in response_json.get("components", []):
+        # Safety clamp: never build more than 15 components even if the model
+        # ignores the prompt ceiling. Mirrors the hard limit in the system prompt.
+        for comp_data in response_json.get("components", [])[:15]:
             quantity = float(comp_data["quantity"])
 
             per_unit = NutritionData(
@@ -191,7 +198,9 @@ Rules:
                         "protein": comp.claude_estimate.protein,
                         "carbs": comp.claude_estimate.carbs,
                         "fat": comp.claude_estimate.fat,
-                    }
+                    },
+                    # AI estimate — amendments are always Claude-generated.
+                    "source": NutritionSource.AI_ESTIMATE.value,
                 }
                 for comp in result.components
             ],
